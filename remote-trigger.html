@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Remote Form Auto-Fill Trigger</title>
+    <title>Clock In/Out Remote Trigger</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -85,8 +85,16 @@
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
-            transition: all 0.3s;
-            touch-action: manipulation;
+            color: white;
+        }
+        .btn-clock-in {
+            background-color: #4CAF50;
+        }
+        .btn-clock-out {
+            background-color: #f44336;
+        }
+        .btn:hover {
+            opacity: 0.9;
         }
         .btn-primary {
             background: linear-gradient(45deg, #007bff, #0056b3);
@@ -130,40 +138,11 @@
             color: #0c5460;
             border: 1px solid #bee5eb;
         }
-        .quick-actions {
-            margin: 20px 0;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 8px;
-        }
-        .quick-actions h3 {
-            margin: 0 0 10px 0;
-            color: #495057;
-            font-size: 16px;
-        }
-        .preset-btn {
-            display: block;
-            width: 100%;
-            margin: 8px 0;
-            padding: 10px;
-            background: #6c757d;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        .preset-btn:hover {
-            background: #5a6268;
-        }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>🚀 Remote Auto-Fill</h1>
-            <div class="subtitle">Trigger form filling on your laptop from anywhere</div>
-        </div>
+        <h1>Clock In/Out Remote Trigger</h1>
         
         <div class="device-info">
             <strong>Target Device ID:</strong>
@@ -177,40 +156,30 @@
             </div>
             
             <div class="form-group">
-                <label for="username">Username/Email:</label>
-                <input type="text" id="username" placeholder="your@email.com">
+                <label for="username">Username:</label>
+                <input type="text" id="username" placeholder="your username">
             </div>
             
             <div class="form-group">
                 <label for="password">Password:</label>
-                <input type="password" id="password" placeholder="Your password">
-            </div>
-            
-            <div class="form-group">
-                <label for="buttonIndex">Button to Click:</label>
-                <select id="buttonIndex">
-                    <option value="0">First Button (Login/Submit)</option>
-                    <option value="1">Second Button</option>
-                    <option value="2">Third Button</option>
-                </select>
+                <input type="password" id="password" placeholder="your password">
             </div>
             
             <div class="button-group">
-                <button type="button" class="btn btn-primary" onclick="sendRemoteCommand()">
-                    📡 Send Remote Trigger
+                <button type="button" class="btn btn-clock-in" onclick="sendClockInCommand()">
+                    ⏰ CLOCK IN
                 </button>
+                <button type="button" class="btn btn-clock-out" onclick="sendClockOutCommand()">
+                    🔚 CLOCK OUT
+                </button>
+            </div>
+            
+            <div class="button-group" style="margin-top: 10px;">
                 <button type="button" class="btn btn-warning" onclick="testConnection()">
                     🔍 Test Connection
                 </button>
             </div>
         </form>
-        
-        <div class="quick-actions">
-            <h3>Quick Actions:</h3>
-            <button class="preset-btn" onclick="fillPreset('gmail')">📧 Gmail Login</button>
-            <button class="preset-btn" onclick="fillPreset('facebook')">📘 Facebook Login</button>
-            <button class="preset-btn" onclick="fillPreset('custom')">⚙️ Custom Form</button>
-        </div>
         
         <div id="status" class="status" style="display: none;"></div>
     </div>
@@ -236,11 +205,16 @@
             if (params.get('device')) document.getElementById('targetDevice').value = params.get('device');
             if (params.get('username')) document.getElementById('username').value = params.get('username');
             if (params.get('password')) document.getElementById('password').value = params.get('password');
-            if (params.get('buttonIndex')) document.getElementById('buttonIndex').value = params.get('buttonIndex');
             
             // Auto-trigger if specified
-            if (params.get('auto') === 'true') {
-                setTimeout(sendRemoteCommand, 1000);
+            if (params.get('auto') === 'true' && params.get('action')) {
+                setTimeout(() => {
+                    if (params.get('action') === 'in') {
+                        sendClockInCommand();
+                    } else if (params.get('action') === 'out') {
+                        sendClockOutCommand();
+                    }
+                }, 1000);
             }
         };
         
@@ -251,11 +225,18 @@
             document.getElementById('deviceId').textContent = deviceId || 'Enter your laptop\'s device ID below';
         });
         
-        async function sendRemoteCommand() {
+        function sendClockInCommand() {
+            sendRemoteCommand(0); // 0 for Clock IN
+        }
+        
+        function sendClockOutCommand() {
+            sendRemoteCommand(1); // 1 for Clock OUT
+        }
+        
+        async function sendRemoteCommand(buttonIndex) {
             const deviceId = document.getElementById('targetDevice').value.trim();
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
-            const buttonIndex = parseInt(document.getElementById('buttonIndex').value);
             
             if (!deviceId) {
                 showStatus('error', 'Please enter your laptop\'s device ID');
@@ -293,7 +274,7 @@
                 });
                 
                 if (response.ok) {
-                    showStatus('success', `✅ Command sent successfully! Your laptop should fill the form within 3 seconds.`);
+                    showStatus('success', `✅ ${buttonIndex === 0 ? 'Clock IN' : 'Clock OUT'} command sent successfully! Your laptop should fill the form within 3 seconds.`);
                     
                     // Clear sensitive data after 30 seconds
                     setTimeout(() => {
@@ -340,27 +321,6 @@
             }
         }
         
-        function fillPreset(type) {
-            switch(type) {
-                case 'gmail':
-                    document.getElementById('username').value = 'your@gmail.com';
-                    document.getElementById('password').value = '';
-                    document.getElementById('buttonIndex').value = '0';
-                    break;
-                case 'facebook':
-                    document.getElementById('username').value = 'your@email.com';
-                    document.getElementById('password').value = '';
-                    document.getElementById('buttonIndex').value = '0';
-                    break;
-                case 'custom':
-                    document.getElementById('username').value = 'testuser';
-                    document.getElementById('password').value = 'testpass';
-                    document.getElementById('buttonIndex').value = '0';
-                    break;
-            }
-            document.getElementById('username').focus();
-        }
-        
         function showStatus(type, message) {
             const statusDiv = document.getElementById('status');
             statusDiv.style.display = 'block';
@@ -373,21 +333,6 @@
                     statusDiv.style.display = 'none';
                 }, 10000);
             }
-        }
-        
-        // Generate shareable URL
-        function generateShareURL() {
-            const deviceId = document.getElementById('targetDevice').value;
-            const username = document.getElementById('username').value;
-            const buttonIndex = document.getElementById('buttonIndex').value;
-            
-            const url = new URL(window.location.href);
-            url.searchParams.set('device', deviceId);
-            url.searchParams.set('username', username);
-            url.searchParams.set('buttonIndex', buttonIndex);
-            url.searchParams.set('auto', 'true');
-            
-            return url.toString();
         }
     </script>
 </body>
