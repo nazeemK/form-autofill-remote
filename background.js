@@ -1,10 +1,12 @@
 // Listen for messages from external webpage (local)
 chrome.runtime.onMessageExternal.addListener(
     async (request, sender, sendResponse) => {
+        console.log('Background script received external message:', request);
         if (request.action === 'fillForm') {
             try {
                 // Get the active tab
                 const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+                console.log('Found active tab:', tab);
                 
                 // Send message to content script
                 const response = await chrome.tabs.sendMessage(tab.id, {
@@ -15,9 +17,11 @@ chrome.runtime.onMessageExternal.addListener(
                         buttonIndex: request.buttonIndex
                     }
                 });
+                console.log('Sent message to content script, response:', response);
                 
                 sendResponse({ status: 'success', response });
             } catch (error) {
+                console.error('Error in background script:', error);
                 sendResponse({ status: 'error', error: error.message });
             }
         }
@@ -93,10 +97,12 @@ async function startRemotePolling() {
 
 // Process remote command
 async function processRemoteCommand(command) {
+    console.log('Processing remote command:', command);
     if (command.action === 'fillForm') {
         try {
             // Get the active tab
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            console.log('Found active tab for remote command:', tab);
             
             // Send message to content script
             await chrome.tabs.sendMessage(tab.id, {
