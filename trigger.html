@@ -116,6 +116,14 @@
                 <label for="password">Password:</label>
                 <input type="password" id="password" name="password" required>
             </div>
+            
+            <div class="form-group">
+                <label for="buttonIndex">Button to Click:</label>
+                <select id="buttonIndex" name="buttonIndex">
+                    <option value="0">Clock IN</option>
+                    <option value="1">Clock OUT</option>
+                </select>
+            </div>
         </form>
         
         <div id="status" class="status" style="display: none;"></div>
@@ -157,13 +165,15 @@
         function triggerClockIn() {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
-            triggerAutoFill(username, password, 0); // 0 for Clock IN
+            const buttonIndex = document.getElementById('buttonIndex').value;
+            triggerAutoFill(username, password, buttonIndex);
         }
         
         function triggerClockOut() {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
-            triggerAutoFill(username, password, 1); // 1 for Clock OUT
+            const buttonIndex = document.getElementById('buttonIndex').value;
+            triggerAutoFill(username, password, buttonIndex);
         }
         
         function triggerAutoFill(username, password, buttonIndex) {
@@ -181,7 +191,7 @@
                 if (chrome.runtime.lastError) {
                     showStatus('error', 'Error: ' + chrome.runtime.lastError.message);
                 } else if (response && response.status === 'success') {
-                    showStatus('success', buttonIndex === 0 ? '✅ Clock IN triggered!' : '✅ Clock OUT triggered!');
+                    showStatus('success', buttonIndex === '0' ? '✅ Clock IN triggered!' : '✅ Clock OUT triggered!');
                 } else {
                     showStatus('error', 'Failed to trigger. Make sure the extension is installed and enabled.');
                 }
