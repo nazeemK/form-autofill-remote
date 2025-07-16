@@ -1,11 +1,19 @@
 // Function to fill form and click button
 function fillFormAndSubmit(data) {
     // Find username and password fields (common selectors)
-    const usernameField = document.querySelector('input[type="text"], input[type="email"], input[name="username"]');
-    const passwordField = document.querySelector('input[type="password"]');
+    const usernameField = document.querySelector('input[name="username"]');
+    const passwordField = document.querySelector('input[name="password"]');
     
-    // Find submit buttons (looking for two buttons as specified)
-    const buttons = Array.from(document.querySelectorAll('button, input[type="submit"], input[type="button"]'));
+    // Find specific buttons by ID first, then fall back to general selectors
+    let buttons = [
+        document.querySelector('#in'),  // Clock IN button
+        document.querySelector('#out')  // Clock OUT button
+    ].filter(btn => btn); // Remove null values
+    
+    // If specific buttons not found, fall back to general button search
+    if (buttons.length === 0) {
+        buttons = Array.from(document.querySelectorAll('button, input[type="submit"], input[type="button"]'));
+    }
     
     if (usernameField && data.username) {
         usernameField.value = data.username;
@@ -19,9 +27,19 @@ function fillFormAndSubmit(data) {
         passwordField.dispatchEvent(new Event('input', { bubbles: true }));
     }
     
+    // Handle hidden fields
+    const inoutField = document.querySelector('input[name="inout"]');
+    if (inoutField) {
+        inoutField.value = data.buttonIndex === 0 ? 'in' : 'out';
+    }
+    
     // If buttonIndex is provided and valid, click the specified button
     if (data.buttonIndex !== undefined && buttons[data.buttonIndex]) {
         setTimeout(() => {
+            // Set the inout value based on which button is clicked
+            if (inoutField) {
+                inoutField.value = buttons[data.buttonIndex].id === 'in' ? 'in' : 'out';
+            }
             buttons[data.buttonIndex].click();
         }, 500); // Small delay to ensure form is filled before clicking
     }
