@@ -219,7 +219,8 @@
         // Configuration
         const CONFIG = {
             serverUrl: 'https://api.jsonbin.io/v3/b',
-            apiKey: '$2a$10$$2a$10$bPb7m5nuFs4M2Ii9h2nbg.ohAafweMMAukD.UStpOTUKx81tZMJ0G' // Replace with actual API key
+            apiKey: '$2a$10$bPb7m5nuFs4M2Ii9h2nbg.ohAafweMMAukD.UStpOTUKx81tZMJ0G',
+            binId: '687789ef6063391d31aeb982' // Fixed bin ID
         };
         
         // Load saved device ID
@@ -277,13 +278,15 @@
                     timestamp: Date.now()
                 };
                 
-                const response = await fetch(`${CONFIG.serverUrl}/${deviceId}`, {
+                // Send the command directly to the bin
+                const response = await fetch(`${CONFIG.serverUrl}/${CONFIG.binId}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-Master-Key': CONFIG.apiKey
                     },
                     body: JSON.stringify({
+                        deviceId: deviceId,
                         command: command,
                         timestamp: command.timestamp
                     })
@@ -299,9 +302,8 @@
                 } else {
                     throw new Error('Failed to send command');
                 }
-                
             } catch (error) {
-                showStatus('error', 'Failed to send command. Check your internet connection and device ID.');
+                showStatus('error', error.message || 'Failed to send command. Check your internet connection.');
                 console.error('Send error:', error);
             }
         }
@@ -317,16 +319,21 @@
             showStatus('info', 'Testing connection...');
             
             try {
-                const response = await fetch(`${CONFIG.serverUrl}/${deviceId}/latest`, {
+                const response = await fetch(`${CONFIG.serverUrl}/${CONFIG.binId}`, {
                     headers: {
                         'X-Master-Key': CONFIG.apiKey
                     }
                 });
                 
                 if (response.ok) {
-                    showStatus('success', '✅ Connection successful! Device ID is valid.');
+                    const data = await response.json();
+                    if (data && data.record) {
+                        showStatus('success', '✅ Connection successful! Device ID is valid.');
+                    } else {
+                        showStatus('error', 'Connection successful but no data found.');
+                    }
                 } else {
-                    showStatus('error', 'Connection failed. Check device ID and internet connection.');
+                    showStatus('error', 'Connection failed. Check your internet connection.');
                 }
             } catch (error) {
                 showStatus('error', 'Connection test failed. Check your internet connection.');
