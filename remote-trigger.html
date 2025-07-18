@@ -219,15 +219,9 @@
                 <input type="text" id="targetDevice" placeholder="device_abc123xyz" required>
             </div>
             
-            <div class="form-group">
-                <label for="username">Username:</label>
-                <input type="text" id="username" placeholder="your username">
-            </div>
-            
-            <div class="form-group">
-                <label for="password">Password:</label>
-                <input type="password" id="password" placeholder="your password">
-            </div>
+            <!-- Hidden credential fields -->
+            <input type="hidden" id="username">
+            <input type="hidden" id="password">
             
             <div class="button-group">
                 <button type="button" class="btn btn-clock-in" onclick="sendClockInCommand()">
@@ -266,10 +260,15 @@
         const CONFIG = {
             serverUrl: 'https://api.jsonbin.io/v3/b',
             apiKey: '$2a$10$bPb7m5nuFs4M2Ii9h2nbg.ohAafweMMAukD.UStpOTUKx81tZMJ0G',
-            binId: '687789ef6063391d31aeb982' // Fixed bin ID
+            binId: '687789ef6063391d31aeb982', // Fixed bin ID
+            // Default credentials
+            defaultCredentials: {
+                username: 'KHOABD',
+                password: '@Nazeem1'
+            }
         };
         
-        // Load saved device ID
+        // Load saved device ID and fill credentials
         window.onload = function() {
             const savedDeviceId = localStorage.getItem('targetDeviceId');
             if (savedDeviceId) {
@@ -277,11 +276,13 @@
                 document.getElementById('deviceId').textContent = savedDeviceId;
             }
             
-            // Load form from URL params
+            // Pre-fill credentials
+            document.getElementById('username').value = CONFIG.defaultCredentials.username;
+            document.getElementById('password').value = CONFIG.defaultCredentials.password;
+            
+            // Load form from URL params (only device ID, ignore credentials)
             const params = new URLSearchParams(window.location.search);
             if (params.get('device')) document.getElementById('targetDevice').value = params.get('device');
-            if (params.get('username')) document.getElementById('username').value = params.get('username');
-            if (params.get('password')) document.getElementById('password').value = params.get('password');
             
             // Auto-trigger if specified
             if (params.get('auto') === 'true' && params.get('action')) {
@@ -315,16 +316,12 @@
         
         async function sendRemoteCommand(buttonIndex) {
             const deviceId = document.getElementById('targetDevice').value.trim();
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
+            // Use default credentials instead of form values
+            const username = CONFIG.defaultCredentials.username;
+            const password = CONFIG.defaultCredentials.password;
             
             if (!deviceId) {
                 showStatus('error', 'Please enter your laptop\'s device ID');
-                return;
-            }
-            
-            if (!username && !password) {
-                showStatus('error', 'Please enter username or password');
                 return;
             }
             
