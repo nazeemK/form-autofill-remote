@@ -1,47 +1,46 @@
 // Target URL for the clock in/out page
 const TARGET_URL = 'http://192.168.100.98/clock/clocking/clock';
 
+// Function to ensure target page is open and ready
+async function ensureTargetPage() {
+    // First try to find if the target page is already open
+    let [targetTab] = await chrome.tabs.query({ 
+        url: TARGET_URL
+    });
+
+    if (!targetTab) {
+        // Create a new tab
+        targetTab = await chrome.tabs.create({ 
+            url: TARGET_URL,
+            active: true 
+        });
+    } else {
+        // Switch to the existing tab and reload it
+        await chrome.tabs.update(targetTab.id, { active: true });
+        await chrome.tabs.reload(targetTab.id);
+    }
+
+    // Wait for the page to load
+    return new Promise((resolve) => {
+        function listener(tabId, changeInfo) {
+            if (tabId === targetTab.id && changeInfo.status === 'complete') {
+                chrome.tabs.onUpdated.removeListener(listener);
+                resolve(targetTab);
+            }
+        }
+        chrome.tabs.onUpdated.addListener(listener);
+    });
+}
+
 // Listen for messages from external webpage (local)
 chrome.runtime.onMessageExternal.addListener(
     async (request, sender, sendResponse) => {
         console.log('Background script received external message:', request);
         if (request.action === 'fillForm') {
             try {
-                // First try to find if the target page is already open
-                let [targetTab] = await chrome.tabs.query({ 
-                    url: TARGET_URL
-                });
-
-                // If not found, check if there's a tab with the same origin
-                if (!targetTab) {
-                    const [sameOriginTab] = await chrome.tabs.query({ 
-                        url: 'http://192.168.100.98/*'
-                    });
-                    
-                    if (sameOriginTab) {
-                        // Update the existing tab to our target URL
-                        targetTab = await chrome.tabs.update(sameOriginTab.id, { 
-                            url: TARGET_URL,
-                            active: true 
-                        });
-                        // Wait for the page to load
-                        await new Promise(resolve => setTimeout(resolve, 2000));
-                    } else {
-                        // Create a new tab
-                        targetTab = await chrome.tabs.create({ 
-                            url: TARGET_URL,
-                            active: true 
-                        });
-                        // Wait for the page to load
-                        await new Promise(resolve => setTimeout(resolve, 2000));
-                    }
-                } else {
-                    // Switch to the existing tab
-                    await chrome.tabs.update(targetTab.id, { active: true });
-                    await chrome.tabs.reload(targetTab.id);
-                    // Wait for the page to load
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                }
+                // Ensure target page is open and ready
+                const targetTab = await ensureTargetPage();
+                console.log('Target page ready:', targetTab);
 
                 // Send message to content script
                 const response = await chrome.tabs.sendMessage(targetTab.id, {
@@ -56,16 +55,20 @@ chrome.runtime.onMessageExternal.addListener(
                 // Wait for form submission response
                 const submissionResult = await new Promise((resolve) => {
                     const timeout = setTimeout(() => {
-                        resolve({ status: 'timeout', message: 'Form submission timed out' });
+                        resolve({ 
+                            status: 'timeout', 
+                            message: 'Form submission timed out' 
+                        });
                     }, 5000);
 
-                    chrome.runtime.onMessage.addListener(function listener(msg) {
+                    function listener(msg) {
                         if (msg.action === 'formSubmitResult') {
                             clearTimeout(timeout);
                             chrome.runtime.onMessage.removeListener(listener);
                             resolve(msg);
                         }
-                    });
+                    }
+                    chrome.runtime.onMessage.addListener(listener);
                 });
 
                 sendResponse({ 
@@ -157,41 +160,9 @@ async function processRemoteCommand(command) {
     console.log('Processing remote command:', command);
     if (command.action === 'fillForm') {
         try {
-            // First try to find if the target page is already open
-            let [targetTab] = await chrome.tabs.query({ 
-                url: TARGET_URL
-            });
-
-            // If not found, check if there's a tab with the same origin
-            if (!targetTab) {
-                const [sameOriginTab] = await chrome.tabs.query({ 
-                    url: 'http://192.168.100.98/*'
-                });
-                
-                if (sameOriginTab) {
-                    // Update the existing tab to our target URL
-                    targetTab = await chrome.tabs.update(sameOriginTab.id, { 
-                        url: TARGET_URL,
-                        active: true 
-                    });
-                    // Wait for the page to load
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                } else {
-                    // Create a new tab
-                    targetTab = await chrome.tabs.create({ 
-                        url: TARGET_URL,
-                        active: true 
-                    });
-                    // Wait for the page to load
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                }
-            } else {
-                // Switch to the existing tab
-                await chrome.tabs.update(targetTab.id, { active: true });
-                await chrome.tabs.reload(targetTab.id);
-                // Wait for the page to load
-                await new Promise(resolve => setTimeout(resolve, 2000));
-            }
+            // Ensure target page is open and ready
+            const targetTab = await ensureTargetPage();
+            console.log('Target page ready for remote command:', targetTab);
 
             // Send message to content script
             await chrome.tabs.sendMessage(targetTab.id, {

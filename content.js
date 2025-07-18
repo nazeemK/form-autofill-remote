@@ -34,6 +34,17 @@ function fillFormAndSubmit(data) {
         return;
     }
     
+    // Check for existing error message
+    const existingError = document.querySelector('#mymsg');
+    if (existingError && existingError.textContent.trim()) {
+        chrome.runtime.sendMessage({
+            action: 'formSubmitResult',
+            status: 'error',
+            message: existingError.textContent.trim()
+        });
+        return;
+    }
+    
     if (usernameField && data.username) {
         usernameField.value = data.username;
         // Trigger input event to simulate real typing
@@ -75,6 +86,29 @@ function fillFormAndSubmit(data) {
             // Set up form submission monitoring
             const form = document.querySelector('form');
             if (form) {
+                // Monitor for error messages
+                const observer = new MutationObserver((mutations) => {
+                    for (const mutation of mutations) {
+                        if (mutation.type === 'childList') {
+                            const errorMsg = document.querySelector('#mymsg');
+                            if (errorMsg && errorMsg.textContent.trim()) {
+                                chrome.runtime.sendMessage({
+                                    action: 'formSubmitResult',
+                                    status: 'error',
+                                    message: errorMsg.textContent.trim()
+                                });
+                                observer.disconnect();
+                                return;
+                            }
+                        }
+                    }
+                });
+                
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true
+                });
+                
                 const originalSubmit = form.submit;
                 form.submit = function() {
                     chrome.runtime.sendMessage({
@@ -97,9 +131,16 @@ function fillFormAndSubmit(data) {
             buttons[data.buttonIndex].click();
             console.log('Button clicked');
             
-            // Set a timeout to check if the form is still on the page
+            // Set a timeout to check for error messages
             setTimeout(() => {
-                if (document.querySelector('form')) {
+                const errorMsg = document.querySelector('#mymsg');
+                if (errorMsg && errorMsg.textContent.trim()) {
+                    chrome.runtime.sendMessage({
+                        action: 'formSubmitResult',
+                        status: 'error',
+                        message: errorMsg.textContent.trim()
+                    });
+                } else if (document.querySelector('form')) {
                     chrome.runtime.sendMessage({
                         action: 'formSubmitResult',
                         status: 'error',
