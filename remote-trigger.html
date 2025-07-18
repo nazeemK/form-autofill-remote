@@ -138,6 +138,70 @@
             color: #0c5460;
             border: 1px solid #bee5eb;
         }
+        
+        /* Clock History Styles */
+        .clock-history {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .clock-history h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .history-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            background: white;
+        }
+        .history-item {
+            padding: 10px 15px;
+            border-bottom: 1px solid #dee2e6;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .history-item:last-child {
+            border-bottom: none;
+        }
+        .history-item.success {
+            border-left: 4px solid #4CAF50;
+        }
+        .history-item.error {
+            border-left: 4px solid #f44336;
+        }
+        .history-item .time {
+            color: #666;
+        }
+        .history-item .action {
+            font-weight: bold;
+        }
+        .history-item .status {
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            background: #e9ecef;
+        }
+        .clear-history {
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 5px 10px;
+        }
+        .clear-history:hover {
+            color: #dc3545;
+        }
     </style>
 </head>
 <body>
@@ -182,6 +246,19 @@
         </form>
         
         <div id="status" class="status" style="display: none;"></div>
+
+        <!-- Clock History Section -->
+        <div class="clock-history">
+            <h3>
+                Clock History
+                <button type="button" class="clear-history" onclick="clearHistory()">
+                    🗑️ Clear
+                </button>
+            </h3>
+            <div id="historyList" class="history-list">
+                <!-- History items will be added here dynamically -->
+            </div>
+        </div>
     </div>
 
     <script>
@@ -216,6 +293,9 @@
                     }
                 }, 1000);
             }
+
+            // Load clock history
+            loadHistory();
         };
         
         // Save device ID when changed
@@ -248,7 +328,7 @@
                 return;
             }
             
-            showStatus('info', 'Sending command to laptop...');
+            showStatus('info', 'Opening clock page and sending command to laptop...');
             
             try {
                 const command = {
@@ -274,7 +354,26 @@
                 });
                 
                 if (response.ok) {
-                    showStatus('success', `✅ ${buttonIndex === 0 ? 'Clock IN' : 'Clock OUT'} command sent successfully! Your laptop should fill the form within 3 seconds.`);
+                    const result = await response.json();
+                    let status, message;
+                    
+                    if (result.status === 'success') {
+                        status = 'success';
+                        message = `✅ ${result.message} at ${new Date(result.timestamp).toLocaleTimeString()}`;
+                    } else if (result.status === 'error') {
+                        status = 'error';
+                        message = `❌ Error: ${result.message || 'Unknown error'}`;
+                    } else if (result.status === 'timeout') {
+                        status = 'error';
+                        message = '⚠️ Timed out waiting for confirmation. Please check your laptop.';
+                    }
+                    
+                    showStatus(status, message);
+                    addHistoryItem({
+                        buttonIndex,
+                        status,
+                        message: result.message || message
+                    });
                     
                     // Clear sensitive data after 30 seconds
                     setTimeout(() => {
@@ -284,7 +383,13 @@
                     throw new Error('Failed to send command');
                 }
             } catch (error) {
-                showStatus('error', error.message || 'Failed to send command. Check your internet connection.');
+                const errorMessage = error.message || 'Failed to send command. Check your internet connection.';
+                showStatus('error', errorMessage);
+                addHistoryItem({
+                    buttonIndex,
+                    status: 'error',
+                    message: errorMessage
+                });
                 console.error('Send error:', error);
             }
         }
@@ -332,6 +437,51 @@
                 setTimeout(() => {
                     statusDiv.style.display = 'none';
                 }, 10000);
+            }
+        }
+
+        // Load history from localStorage
+        function loadHistory() {
+            const history = JSON.parse(localStorage.getItem('clockHistory') || '[]');
+            const historyList = document.getElementById('historyList');
+            historyList.innerHTML = '';
+            
+            history.forEach(item => {
+                const historyItem = document.createElement('div');
+                historyItem.className = `history-item ${item.status}`;
+                historyItem.innerHTML = `
+                    <span class="time">${new Date(item.timestamp).toLocaleString()}</span>
+                    <span class="action">${item.action}</span>
+                    <span class="status">${item.message}</span>
+                `;
+                historyList.prepend(historyItem);
+            });
+        }
+
+        // Add new history item
+        function addHistoryItem(data) {
+            const history = JSON.parse(localStorage.getItem('clockHistory') || '[]');
+            history.unshift({
+                timestamp: new Date().toISOString(),
+                action: data.buttonIndex === 0 ? 'Clock IN' : 'Clock OUT',
+                status: data.status,
+                message: data.message
+            });
+            
+            // Keep only last 50 entries
+            if (history.length > 50) {
+                history.pop();
+            }
+            
+            localStorage.setItem('clockHistory', JSON.stringify(history));
+            loadHistory();
+        }
+
+        // Clear history
+        function clearHistory() {
+            if (confirm('Are you sure you want to clear the clock history?')) {
+                localStorage.removeItem('clockHistory');
+                loadHistory();
             }
         }
     </script>
